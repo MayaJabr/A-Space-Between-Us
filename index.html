@@ -40,6 +40,26 @@ input[type=range]::-moz-range-thumb{width:3px;height:44px;border-radius:2px;back
 .cine.idle .bar,.cine.idle .vol,.cine.idle .title a{pointer-events:none}
 .cine.idle canvas{cursor:none}
 #intro{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;background:rgba(9,11,25,.88);transition:opacity 1.8s ease}
+#intro{overflow-y:auto;overscroll-behavior:contain}
+.intro-heading{flex:none;margin:auto 0 0}
+#intro .intro-copy{width:min(760px,100%);max-height:min(43vh,420px);overflow-y:auto;margin:clamp(18px,4vh,38px) auto 0;padding:0 10px;scrollbar-width:thin;scrollbar-color:rgba(161,158,186,.35) transparent}
+#intro .intro-copy p{max-width:720px;margin:0 auto 17px;font-size:clamp(18px,2.15vw,23px);line-height:1.42;font-style:normal;font-weight:300;color:rgba(236,232,244,.88);opacity:0;transform:translateY(13px);filter:blur(5px);transition:opacity 1.7s ease,transform 1.7s ease,filter 1.7s ease}
+#intro .intro-copy p.revealed{opacity:1;transform:translateY(0);filter:blur(0)}
+.intro-actions{display:flex;flex-direction:column;align-items:center;gap:7px;flex:none;margin-top:15px}
+#begin{margin-top:8px;min-width:220px}
+#begin:not(:disabled){border-color:rgba(242,166,90,.65);background:rgba(242,166,90,.12)}
+#skipIntro{width:auto;height:auto;min-height:34px;border:0;background:transparent;color:var(--dim);font-size:17px;font-style:italic;padding:4px 12px}
+#intro small{margin:8px 0 auto}
+@media (max-width:640px){
+ #intro{justify-content:flex-start;padding:calc(env(safe-area-inset-top,0px) + 34px) 20px calc(env(safe-area-inset-bottom,0px) + 24px)}
+ .intro-heading{margin:8vh 0 0}
+ #intro .intro-copy{max-height:42vh;margin-top:26px;padding:0 2px}
+ #intro .intro-copy p{font-size:19px;line-height:1.38;margin-bottom:14px}
+ .intro-actions{margin-top:14px}
+}
+@media (prefers-reduced-motion:reduce){
+ #intro .intro-copy p{transition:none;transform:none;filter:none}
+}
 #intro.gone{opacity:0;pointer-events:none;visibility:hidden;transition:opacity 1.8s ease,visibility 0s 1.8s}
 #intro h2{margin:0;font-weight:300;font-size:clamp(40px,8vw,84px);line-height:1.05}
 #intro p{margin:0;font-style:italic;font-weight:300;font-size:clamp(20px,3vw,28px);color:var(--dim)}
@@ -49,7 +69,22 @@ input[type=range]::-moz-range-thumb{width:3px;height:44px;border-radius:2px;back
 </style></head><body>
 <canvas id="c" aria-label="Animation of two glowing points talking to each other through the music"></canvas>
 <div class="title"><h1>A Space Between Us</h1><p>Maya Jabr</p><a href="https://open.spotify.com/track/3ChQbFRBACXZRcKwrxQQR4?si=edda7628300248de" target="_blank" rel="noopener noreferrer">Listen on Spotify</a></div>
-<div id="intro"><h2>A Space Between Us</h2><p>Maya Jabr</p><button id="begin" type="button" disabled>Loading…</button><small>Best with headphones</small></div>
+<div id="intro" aria-label="Introduction to A Space Between Us">
+  <div class="intro-heading">
+    <h2>A Space Between Us</h2>
+    <p>Maya Jabr</p>
+  </div>
+  <div class="intro-copy" id="introCopy" aria-live="polite">
+    <p>There are melodies that need no words. They find their way into the quiet places within us, where memory lingers and feelings remain unnamed.</p>
+    <p>This one feels like a conversation between two distant hearts: a tenderness carried across silence, a longing that never quite learned how to speak. Between each note lives everything left unsaid — the words we held back, the moments that slipped away, and the warmth of someone who is still somehow present.</p>
+    <p>Perhaps distance does not always mean absence. Perhaps some people remain close in the only way that matters: quietly, deeply, somewhere within us. And when the music ends, a little of them stays.</p>
+  </div>
+  <div class="intro-actions">
+    <button id="begin" type="button" disabled>Loading the music…</button>
+    <button id="skipIntro" class="text-button" type="button">Skip the words</button>
+  </div>
+  <small>Best with headphones</small>
+</div>
 <div class="vol"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 8.5h3.5L11 5v12l-4.5-3.5H3z" fill="currentColor"/><path d="M14 8c1.6 1.6 1.6 4.4 0 6M16.5 5.5c3 3 3 8 0 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input id="vol" type="range" min="0" max="100" value="80" aria-label="Volume"><button id="cine" type="button" aria-label="Cinematic mode" title="Cinematic mode"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
 <p class="hint" id="hint">Drag a soul closer. Tap to make one of them speak.</p>
 <div class="bar"><button id="play" aria-label="Play" disabled></button><div class="wv"><canvas id="wave"></canvas><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Position in the music"></div><span id="time">Loading the music…</span></div>
@@ -75,7 +110,7 @@ const playBtn=$('play'),seek=$('seek'),timeEl=$('time');
 function setIcon(){playBtn.innerHTML=playing?ICON.pause:ICON.play;playBtn.setAttribute('aria-label',playing?'Pause':'Play')}
 setIcon();
 (async()=>{try{const b=atob(B64),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
-buf=await ac.decodeAudioData(u.buffer);makePeaks();playBtn.disabled=false;$('begin').disabled=false;$('begin').textContent='Begin';timeEl.textContent='0:00 / '+fmt(buf.duration)}catch(e){timeEl.textContent='Could not load the music'}})();
+buf=await ac.decodeAudioData(u.buffer);makePeaks();playBtn.disabled=false;audioReady=true;updateBegin();timeEl.textContent='0:00 / '+fmt(buf.duration)}catch(e){timeEl.textContent='Could not load the music';$('begin').textContent='Audio unavailable'}})();
 const pos=()=>playing?Math.min(ac.currentTime-startedAt,buf.duration):offset;
 function start(){if(!buf)return;ac.resume();src=ac.createBufferSource();src.buffer=buf;src.connect(an);src.start(0,offset);startedAt=ac.currentTime-offset;playing=true;setIcon()}
 function stop(){if(src){try{src.stop()}catch(e){}src.disconnect();src=null}}
@@ -85,7 +120,27 @@ function seekTo(t){offset=Math.max(0,Math.min(buf.duration-0.05,t));if(playing){
 playBtn.onclick=toggle;let sPrev=0,cineT;
 const KF=[[0,0,0],[25,.1,0],[58,.5,0],[60,.2,0],[63,.5,0],[85,.4,0],[89,.7,.2],[100,1,1],[125,1,1],[140,.4,.3],[149,0,0]];
 function arc(p){for(let i=1;i<KF.length;i++){if(p<=KF[i][0]){const a=KF[i-1],b=KF[i],u=(p-a[0])/(b[0]-a[0]),e=u*u*(3-2*u);return[a[1]+(b[1]-a[1])*e,a[2]+(b[2]-a[2])*e]}}return[0,0]}
-$('begin').onclick=()=>{start();$('intro').classList.add('gone')};
+let audioReady=false,introFinished=false;
+const introParagraphs=[...document.querySelectorAll('#introCopy p')];
+function updateBegin(){
+ $('begin').disabled=!(audioReady&&introFinished);
+ $('begin').textContent=audioReady?'Enter the space':'Loading the music…';
+}
+function finishIntro(){
+ if(introFinished)return;
+ introFinished=true;
+ introParagraphs.forEach(p=>p.classList.add('revealed'));
+ $('skipIntro').hidden=true;
+ updateBegin();
+}
+function revealIntro(){
+ if(reduce){finishIntro();return}
+ introParagraphs.forEach((p,i)=>setTimeout(()=>p.classList.add('revealed'),1200+i*4300));
+ setTimeout(finishIntro,1200+introParagraphs.length*4300+900);
+}
+$('skipIntro').onclick=finishIntro;
+$('begin').onclick=()=>{if(!audioReady||!introFinished)return;start();$('intro').classList.add('gone')};
+revealIntro();
 document.fonts&&document.fonts.load('28px Amiri');
 const phr=[],stars=[];
 const SCRIPT=[[3,0,"How long has it been since we last spoke?"],[11,1,"Longer than I can count"],[19,0,"I was waiting for a word from you"],[26,1,"The fear was stronger than me"],[34,0,"And me? The silence hurt"],[41,1,"I never meant to drift away"],[47,0,"But you did"],[53,1,"And I drifted from myself too"],[63,0,"Do you still remember me?"],[69,1,"Every day... every moment"],[75,0,"Why didn’t you say so?"],[81,1,"I hid my longing inside the silence"],[91,0,"I missed you"],[97,1,"I missed you more"],[104,0,"Forgive me for blaming you"],[110,1,"Forgive me too"],[116,0,"No more distance from now on"],[122,1,"And no more silence"],[131,0,"Let’s stay here"],[138,1,"Even if we drift apart?"],[144,0,"We’ll always find each other"]];
